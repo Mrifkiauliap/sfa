@@ -1,8 +1,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
+  vite: {
+    optimizeDeps: {
+      include: ["@vue/devtools-core", "@vue/devtools-kit"],
+    },
+  },
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
 
@@ -14,20 +22,16 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ["shadcn-nuxt"],
+  modules: ["shadcn-nuxt", "@pinia/nuxt"],
 
   shadcn: {
-    /**
-     * Prefix for all the imported component.
-     * @default "Ui"
-     */
     prefix: "",
-    /**
-     * Directory that the component lives in.
-     * Will respect the Nuxt aliases.
-     * @link https://nuxt.com/docs/api/nuxt-config#alias
-     * @default "@/components/ui"
-     */
     componentDir: "@/components/ui",
+  },
+
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.API_BASE_URL || "http://localhost:3000",
+    },
   },
 });
