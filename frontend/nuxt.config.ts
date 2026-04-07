@@ -5,11 +5,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default defineNuxtConfig({
-  compatibilityDate: "2025-07-15",
+  compatibilityDate: "2026-04-08",
   vite: {
     optimizeDeps: {
       include: ["@vue/devtools-core", "@vue/devtools-kit"],
     },
+    plugins: [tailwindcss()],
   },
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
@@ -18,11 +19,7 @@ export default defineNuxtConfig({
     port: parseInt(process.env.PORT || "5173"),
   },
 
-  vite: {
-    plugins: [tailwindcss()],
-  },
-
-  modules: ["shadcn-nuxt", "@pinia/nuxt"],
+  modules: ["shadcn-nuxt", "@pinia/nuxt", "@nuxt/eslint"],
 
   shadcn: {
     prefix: "",

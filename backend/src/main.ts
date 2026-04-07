@@ -1,11 +1,16 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module';
 import { setupSwagger } from './common/config/swagger.config';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ── Global Logger ─────────────────────────────────────────────────────────
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   // ── CORS ─────────────────────────────────────────────────────────────────
   app.enableCors({
@@ -24,7 +29,10 @@ async function bootstrap() {
   );
 
   // ── Global Interceptors ───────────────────────────────────────────────────
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(),
+    new TransformInterceptor(),
+  );
 
   // ── Swagger ───────────────────────────────────────────────────────────────
   setupSwagger(app);
