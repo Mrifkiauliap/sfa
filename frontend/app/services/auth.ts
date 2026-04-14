@@ -1,5 +1,5 @@
+import { useAuthStore } from "~/stores/auth";
 import { useApi } from "./api";
-// import type { LoginDto } from '~/types/auth' // akan kita anggap tipe any sementara atau dibuat
 
 export const useAuth = () => {
   const api = useApi();
@@ -7,6 +7,7 @@ export const useAuth = () => {
   const refreshTokenCookie = useCookie("refresh_token");
 
   const login = async (payload: any) => {
+    const authStore = useAuthStore();
     const response = await api("/auth/login", {
       method: "POST",
       body: payload,
@@ -15,12 +16,14 @@ export const useAuth = () => {
     if (response?.data) {
       token.value = response.data.access_token;
       refreshTokenCookie.value = response.data.refresh_token;
+      authStore.user = response.data.user;
     }
 
     return response;
   };
 
   const register = async (payload: any) => {
+    const authStore = useAuthStore();
     const response = await api("/auth/register", {
       method: "POST",
       body: payload,
@@ -29,6 +32,7 @@ export const useAuth = () => {
     if (response?.data) {
       token.value = response.data.access_token;
       refreshTokenCookie.value = response.data.refresh_token;
+      authStore.user = response.data.user;
     }
 
     return response;

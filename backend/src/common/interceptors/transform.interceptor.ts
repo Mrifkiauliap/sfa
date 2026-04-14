@@ -24,7 +24,7 @@ function isStructuredPayload<T>(
     val !== null &&
     typeof val === 'object' &&
     !Array.isArray(val) &&
-    'data' in (val as object)
+    'data' in val
   );
 }
 

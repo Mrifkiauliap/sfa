@@ -81,7 +81,12 @@
               class="w-full font-medium"
               :disabled="isLoading"
             >
-              <span v-if="isLoading"> <Spinner /> Memproses...</span>
+              <span
+                v-if="isLoading"
+                class="flex items-center justify-center gap-2"
+              >
+                <Spinner class="w-4 h-4 animate-spin" /> Memproses...
+              </span>
               <span v-else>Masuk</span>
             </Button>
           </form>
@@ -107,6 +112,7 @@ import { useAuth } from "@/services/auth";
 
 definePageMeta({
   middleware: "guest",
+  layout: false,
 });
 
 const { login } = useAuth();

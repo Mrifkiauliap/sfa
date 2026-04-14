@@ -8,7 +8,17 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-04-08",
   vite: {
     optimizeDeps: {
-      include: ["@vue/devtools-core", "@vue/devtools-kit"],
+      include: [
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "@tanstack/vue-table",
+        "@vueuse/core",
+        "lucide-vue-next",
+        "class-variance-authority",
+        "reka-ui",
+        "clsx",
+        "tailwind-merge",
+      ],
     },
     plugins: [tailwindcss()],
   },

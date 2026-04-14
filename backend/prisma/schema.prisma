@@ -33,33 +33,46 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  items TransactionItem[]
+  transactions Transaction[]
 }
 
-model Transaction {
+model Merchant {
   id          String   @id @default(uuid())
-  userId      String
-  date        DateTime @default(now())
-  totalAmount Float
+  name        String   @unique
+  description String?
+  location    String?  // Opsional: Berguna untuk relasi spasial di Knowledge Graph
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+model PaymentMethod {
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items TransactionItem[]
+  transactions Transaction[]
 }
 
-model TransactionItem {
-  id            String   @id @default(uuid())
-  transactionId String
-  categoryId    String
-  itemName      String // e.g., "Makan Siang Nasi Padang"
-  amount        Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model Transaction {
+  id              String   @id @default(uuid())
+  userId          String
+  categoryId      String
+  merchantId      String
+  paymentMethodId String
+  date            DateTime @default(now()) // 1.1 Input Tanggal
+  amount          Float                    // 1.2 Input Nominal
+  description     String?                  // Opsional
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)     // 1.3 Input Kategori
+  merchant      Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)     // 1.4 Input Merchant
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict) // 1.5 Input Metode Pembayaran
 }
 
 model AnalysisResult {
@@ -72,3 +85,4 @@ model AnalysisResult {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+

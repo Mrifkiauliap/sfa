@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 // ─── Tipe internal ────────────────────────────────────────────────────────────
 export interface TokenPair {
@@ -90,6 +91,36 @@ export class AuthService {
     return {
       message: 'Login berhasil',
       data: { user: safeUser, ...tokens },
+    };
+  }
+
+  // ── Update Profile ──────────────────────────────────────────────────────────
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    if (dto.username) {
+      const existing = await this.prisma.user.findFirst({
+        where: { username: dto.username, id: { not: userId } },
+      });
+      if (existing) {
+        throw new ConflictException('Username sudah digunakan');
+      }
+    }
+
+    const dataToUpdate: any = { ...dto };
+    if (dto.password) {
+      dataToUpdate.password = await bcrypt.hash(dto.password, 10);
+    } else {
+      delete dataToUpdate.password;
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: dataToUpdate,
+      select: USER_SELECT,
+    });
+
+    return {
+      message: 'Profil berhasil diperbarui',
+      data: user,
     };
   }
 
