@@ -13,13 +13,14 @@ export interface ApiResponse<T = unknown> {
   statusCode: number;
   message: string;
   data: T | null;
+  meta?: Record<string, unknown>;
   error: null;
 }
 
-// ─── Type guard: deteksi apakah controller me-return bentuk { data, message? }
+// ─── Type guard: deteksi apakah controller me-return bentuk { data, message?, meta? }
 function isStructuredPayload<T>(
   val: unknown,
-): val is { data: T; message?: string } {
+): val is { data: T; message?: string; [key: string]: unknown } {
   return (
     val !== null &&
     typeof val === 'object' &&
@@ -59,12 +60,16 @@ export class TransformInterceptor<T = unknown> implements NestInterceptor<
       return { ...base, message: 'Success', data: payload as T };
     }
 
-    // Objek terstruktur: { data, message? }
+    // Objek terstruktur: { data, message?, meta?, ...extras }
     if (isStructuredPayload<T>(payload)) {
+      // Destructure known keys, spread sisanya ke root response
+      const { data, message, ...extras } = payload as any;
       return {
         ...base,
-        message: payload.message ?? 'Success',
-        data: payload.data ?? null,
+        message: message ?? 'Success',
+        data: data ?? null,
+        // Sertakan field tambahan (misal: meta paginasi) langsung di root response
+        ...extras,
       };
     }
 

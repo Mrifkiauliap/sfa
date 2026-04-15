@@ -94,41 +94,73 @@
 
           <!-- Progress Bar & Peringatan Dini -->
           <div class="mt-4" v-if="user?.monthlyAllowance">
-            <div class="flex justify-between text-xs font-semibold mb-1">
-              <span :class="isOverBudget ? 'text-rose-600' : 'text-slate-500'">
-                Terpakai: Rp {{ currentMonthExpenses.toLocaleString("id-ID") }}
-              </span>
-              <span :class="isOverBudget ? 'text-rose-600' : 'text-slate-500'">
-                {{ budgetPercentage.toFixed(0) }}%
-              </span>
-            </div>
+            <!-- Empty State jika belum ada transaksi -->
             <div
-              class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner"
+              v-if="
+                dashboardSummary?.recentTransactions.length === 0 && !isLoading
+              "
+              class="mt-2 p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center"
             >
-              <div
-                class="h-2 rounded-full transition-all duration-1000 ease-out"
-                :class="
-                  isOverBudget
-                    ? 'bg-rose-500'
-                    : budgetPercentage > 70
-                      ? 'bg-orange-400'
-                      : 'bg-emerald-400'
-                "
-                :style="{ width: `${budgetPercentage}%` }"
-              ></div>
+              <p class="text-xs text-slate-500">
+                Belum ada transaksi bulan ini.
+              </p>
+              <NuxtLink
+                to="/transactions"
+                class="text-xs text-indigo-600 font-semibold hover:underline mt-0.5 inline-block"
+                >+ Catat sekarang</NuxtLink
+              >
             </div>
-
-            <p
-              v-if="isOverBudget"
-              class="mt-3 text-xs font-bold text-rose-600 animate-pulse flex items-center gap-1.5 p-1.5 bg-rose-100/50 rounded-md"
-            >
-              ⚠️ Peringatan Dini: Sisa budget menipis!
-            </p>
-            <p
-              v-else
-              class="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1"
-            >
-              <TrendingUp class="w-4 h-4" /> Masih aman terkendali
+            <!-- Bar jika sudah ada transaksi -->
+            <template v-else>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span
+                  :class="isOverBudget ? 'text-rose-600' : 'text-slate-500'"
+                >
+                  Terpakai: Rp
+                  {{ currentMonthExpenses.toLocaleString("id-ID") }}
+                </span>
+                <span
+                  :class="isOverBudget ? 'text-rose-600' : 'text-slate-500'"
+                >
+                  {{ budgetPercentage.toFixed(0) }}%
+                </span>
+              </div>
+              <div
+                class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner"
+              >
+                <div
+                  class="h-2 rounded-full transition-all duration-1000 ease-out"
+                  :class="
+                    isOverBudget
+                      ? 'bg-rose-500'
+                      : budgetPercentage > 70
+                        ? 'bg-orange-400'
+                        : 'bg-emerald-400'
+                  "
+                  :style="{ width: `${budgetPercentage}%` }"
+                ></div>
+              </div>
+              <p
+                v-if="isOverBudget"
+                class="mt-3 text-xs font-bold text-rose-600 animate-pulse flex items-center gap-1.5 p-1.5 bg-rose-100/50 rounded-md"
+              >
+                ⚠️ Peringatan Dini: Sisa budget menipis!
+              </p>
+              <p
+                v-else
+                class="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1"
+              >
+                <TrendingUp class="w-4 h-4" /> Masih aman terkendali
+              </p>
+            </template>
+          </div>
+          <!-- Jika monthlyAllowance belum diset -->
+          <div
+            v-else-if="!isLoading"
+            class="mt-3 p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center"
+          >
+            <p class="text-xs text-slate-400">
+              Belum ada uang bulanan yang diset.
             </p>
           </div>
         </div>
@@ -196,8 +228,33 @@
     </div>
 
     <!-- AI Recommendations Panel -->
+    <!-- Empty State: Belum ada insights -->
     <div
-      v-if="aprioriResult && aprioriResult.length > 0"
+      v-if="!isLoading && aprioriResult.length === 0"
+      class="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-dashed border-slate-200 rounded-2xl p-8 text-center"
+    >
+      <div
+        class="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-4"
+      >
+        <Wand2 class="w-7 h-7 text-orange-400" />
+      </div>
+      <h3 class="font-bold text-slate-700 text-lg mb-1">
+        Insight Belum Tersedia
+      </h3>
+      <p class="text-slate-500 text-sm mb-4 max-w-sm mx-auto">
+        Perbanyak transaksimu, lalu jalankan Analisis Apriori untuk menemukan
+        pola kebiasaan belanjamu secara otomatis.
+      </p>
+      <NuxtLink to="/analysis/apriori">
+        <Button class="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Wand2 class="w-4 h-4" /> Jalankan Analisis
+        </Button>
+      </NuxtLink>
+    </div>
+
+    <!-- AI Recommendations Panel: Ada insights -->
+    <div
+      v-else-if="aprioriResult.length > 0"
       class="bg-gradient-to-br from-orange-50 to-orange-100/50 border border-orange-200 rounded-2xl p-6 shadow-sm relative overflow-hidden"
     >
       <div
@@ -330,26 +387,23 @@ definePageMeta({
   middleware: "auth",
 });
 
-const { fetchUser, logout } = useAuth();
+const { fetchUser } = useAuth();
 const api = useApi();
 
 const user = ref<any>(null);
 const isLoading = ref(true);
 const aprioriResult = ref<any[]>([]);
-const transactions = ref<any[]>([]);
 
-const currentMonthExpenses = computed(() => {
-  if (!transactions.value.length) return 0;
-  const now = new Date();
-  return transactions.value
-    .filter((t: any) => {
-      const d = new Date(t.date);
-      return (
-        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-      );
-    })
-    .reduce((sum: number, t: any) => sum + t.amount, 0);
-});
+const dashboardSummary = ref<{
+  totalThisMonth: number;
+  totalLastMonth: number;
+  categoryBreakdown: { name: string; total: number; percentage: number }[];
+  recentTransactions: any[];
+} | null>(null);
+
+const currentMonthExpenses = computed(
+  () => dashboardSummary.value?.totalThisMonth ?? 0,
+);
 
 const budgetPercentage = computed(() => {
   if (!user.value?.monthlyAllowance) return 0;
@@ -358,46 +412,40 @@ const budgetPercentage = computed(() => {
   return Math.min(percent, 100);
 });
 
-const isOverBudget = computed(() => budgetPercentage.value >= 85); // Peringatan Dini saat terpakai 85%
+const isOverBudget = computed(() => budgetPercentage.value >= 85);
 
 onMounted(async () => {
   try {
     const res = await fetchUser();
     user.value = res.data;
   } catch (error) {
-    // Error ditangani interceptor
   } finally {
     isLoading.value = false;
   }
 
-  // Load Transactions for Budgeting
   if (user.value) {
     try {
-      const resTrx = await api(`/transaction?userId=${user.value.id}`, {
-        method: "GET",
-      });
-      transactions.value = resTrx?.data || [];
+      const resDash = await api(
+        `/transaction/dashboard?userId=${user.value.id}`,
+        { method: "GET" },
+      );
+      dashboardSummary.value = resDash?.data ?? null;
     } catch (err) {
-      console.warn("Could not load transactions data for dashboard");
+      console.warn("Could not load dashboard summary");
     }
-  }
 
-  // Load Insights for Dashboard
+    try {
+      const resAp = await api("/analysis/apriori", { method: "GET" });
+      const actualResult = resAp?.data?.id
+        ? resAp.data
+        : resAp?.id
+          ? resAp
+          : null;
 
-  try {
-    const resAp = await api("/analysis/apriori", { method: "GET" });
-    const actualResult = resAp?.data?.id
-      ? resAp.data
-      : resAp?.id
-        ? resAp
-        : null;
-
-    if (actualResult && actualResult.data && actualResult.data.rules) {
-      // Kita hanya tampilkan maksimal 2 rules tertinggi untuk tidak memenuhi dashboard
-      aprioriResult.value = actualResult.data.rules.slice(0, 2);
-    }
-  } catch (error) {
-    // Abaikan jika user belum pernah melakukan analisis Apriori
+      if (actualResult && actualResult.data && actualResult.data.rules) {
+        aprioriResult.value = actualResult.data.rules.slice(0, 2);
+      }
+    } catch (error) {}
   }
 });
 </script>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  History,
   LayoutDashboard,
   LogOut,
   Network,
@@ -43,6 +44,7 @@ const menus = [
     children: [
       { name: "Pola Apriori", path: "/analysis/apriori", icon: Wand2 },
       { name: "Knowledge Graph", path: "/analysis/graph", icon: Network },
+      { name: "Riwayat Analisis", path: "/analysis/history", icon: History },
     ],
   },
   {
@@ -70,6 +72,7 @@ const profileForm = ref({
   semester: null as number | null,
   major: "",
   residenceType: "",
+  monthlyAllowance: null as number | null,
   password: "",
 });
 
@@ -81,7 +84,8 @@ const openProfileModal = () => {
       semester: authStore.user.semester || null,
       major: authStore.user.major || "",
       residenceType: authStore.user.residenceType || "",
-      password: "", // Jangan isi password lama
+      monthlyAllowance: authStore.user.monthlyAllowance || null,
+      password: "",
     };
     profileErrors.value = {};
     isProfileModalOpen.value = true;
@@ -112,6 +116,8 @@ const submitProfileUpdate = async () => {
     };
     if (profileForm.value.semester)
       payload.semester = Number(profileForm.value.semester);
+    if (profileForm.value.monthlyAllowance)
+      payload.monthlyAllowance = Number(profileForm.value.monthlyAllowance);
     if (profileForm.value.password)
       payload.password = profileForm.value.password;
 
@@ -148,119 +154,157 @@ const submitProfileUpdate = async () => {
 
 <template>
   <aside
-    class="w-64 h-screen bg-slate-950 text-white flex flex-col border-r border-slate-800 shrink-0 select-none z-30"
+    class="w-60 h-screen bg-slate-900 text-white flex flex-col shrink-0 select-none z-30 border-r border-slate-800/60"
   >
     <!-- Brand / Title -->
-    <div
-      class="h-16 flex items-center px-6 border-b border-slate-800 font-bold text-lg tracking-wider"
-    >
-      <span class="text-indigo-400">SFA</span>
-      <span class="font-light text-slate-300 ml-2">Analyzer</span>
+    <div class="px-5 pt-5 pb-4">
+      <div class="flex items-center gap-2.5">
+        <div
+          class="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center shrink-0"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+            <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+          </svg>
+        </div>
+        <span class="font-bold text-white tracking-tight"
+          >SFA
+          <span class="text-slate-400 font-normal text-sm">Analyzer</span></span
+        >
+      </div>
     </div>
+    <div class="mx-4 h-px bg-slate-800/80 mb-2"></div>
 
     <!-- Navigation -->
-    <div class="flex-1 overflow-y-auto py-6 px-3 space-y-6">
-      <div class="space-y-1">
-        <template v-for="menu in menus" :key="menu.name">
-          <!-- Memiliki Sub-Menu -->
-          <div v-if="menu.children" class="mb-6 mt-6">
-            <h3
-              class="px-3 mb-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest cursor-default"
+    <div class="flex-1 overflow-y-auto px-3 space-y-0.5 pb-4">
+      <template v-for="menu in menus" :key="menu.name">
+        <!-- Sub-Menu Group -->
+        <div v-if="menu.children" class="pt-4">
+          <p
+            class="px-3 mb-1 text-[10px] font-semibold text-slate-500 uppercase tracking-widest"
+          >
+            {{ menu.name }}
+          </p>
+          <div class="space-y-0.5">
+            <NuxtLink
+              v-for="child in menu.children"
+              :key="child.path"
+              :to="child.path"
+              class="relative flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-150 group"
+              :class="
+                route.path === child.path ||
+                route.path.startsWith(child.path + '/')
+                  ? 'bg-indigo-500/10 text-indigo-300'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              "
             >
-              {{ menu.name }}
-            </h3>
-            <div class="space-y-1">
-              <NuxtLink
-                v-for="child in menu.children"
-                :key="child.path"
-                :to="child.path"
-                class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
-                :class="
-                  route.path === child.path || route.path.startsWith(child.path)
-                    ? 'bg-indigo-600/10 text-indigo-400 backdrop-blur-sm'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
+              <!-- Active indicator bar -->
+              <span
+                v-if="
+                  route.path === child.path ||
+                  route.path.startsWith(child.path + '/')
                 "
-              >
-                <component
-                  :is="child.icon"
-                  class="w-5 h-5 mr-3 flex-shrink-0"
-                  :class="
-                    route.path === child.path
-                      ? 'text-indigo-400'
-                      : 'text-slate-500'
-                  "
-                />
-                {{ child.name }}
-              </NuxtLink>
-            </div>
+                class="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-indigo-400"
+              />
+              <component
+                :is="child.icon"
+                class="w-4 h-4 flex-shrink-0 transition-colors"
+                :class="
+                  route.path === child.path ||
+                  route.path.startsWith(child.path + '/')
+                    ? 'text-indigo-400'
+                    : 'text-slate-500 group-hover:text-slate-300'
+                "
+              />
+              <span class="font-medium">{{ child.name }}</span>
+            </NuxtLink>
           </div>
+        </div>
 
-          <!-- Menu Tunggal Berdiri Sendiri -->
-          <NuxtLink
-            v-else
-            :to="menu.path"
-            class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
+        <!-- Single Menu Item -->
+        <NuxtLink
+          v-else
+          :to="menu.path"
+          class="relative flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-150 group mt-1"
+          :class="
+            route.path === menu.path
+              ? 'bg-indigo-500/10 text-indigo-300'
+              : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+          "
+        >
+          <span
+            v-if="route.path === menu.path"
+            class="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-indigo-400"
+          />
+          <component
+            :is="menu.icon"
+            class="w-4 h-4 flex-shrink-0 transition-colors"
             :class="
               route.path === menu.path
-                ? 'bg-indigo-600/10 text-indigo-400 backdrop-blur-sm'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
+                ? 'text-indigo-400'
+                : 'text-slate-500 group-hover:text-slate-300'
             "
+          />
+          <span class="font-medium">{{ menu.name }}</span>
+        </NuxtLink>
+      </template>
+    </div>
+
+    <!-- Bottom: User + Logout -->
+    <div class="border-t border-slate-800/60 pb-1">
+      <!-- User Profile Button -->
+      <div
+        class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+        @click="openProfileModal"
+      >
+        <div
+          v-if="authStore.isFetching && !authStore.user"
+          class="flex items-center gap-3 animate-pulse flex-1"
+        >
+          <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+          <div class="space-y-1.5 flex-1">
+            <div class="h-2.5 bg-slate-700 rounded w-3/4"></div>
+            <div class="h-2 bg-slate-700 rounded w-1/2"></div>
+          </div>
+        </div>
+        <template v-else-if="authStore.user">
+          <div
+            class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-sm shrink-0"
           >
-            <component
-              :is="menu.icon"
-              class="w-5 h-5 mr-3 flex-shrink-0"
-              :class="
-                route.path === menu.path ? 'text-indigo-400' : 'text-slate-500'
-              "
-            />
-            {{ menu.name }}
-          </NuxtLink>
+            {{ authStore.user.fullname?.charAt(0).toUpperCase() }}
+          </div>
+          <div class="overflow-hidden flex-1">
+            <p
+              class="text-sm font-medium text-slate-200 truncate leading-tight"
+            >
+              {{ authStore.user.fullname }}
+            </p>
+            <p class="text-xs text-slate-500 truncate">
+              {{ authStore.user.major || "Edit profil ↗" }}
+            </p>
+          </div>
         </template>
       </div>
-    </div>
 
-    <!-- Pilihan Bawah: Logout -->
-    <div class="px-3 pb-3 mt-auto">
+      <!-- Logout -->
       <button
         @click="handleLogout"
-        class="w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 transition-all duration-150 rounded-none"
       >
-        <LogOut class="w-5 h-5 mr-3 flex-shrink-0" />
-        Keluar Akun
+        <LogOut class="w-4 h-4 shrink-0" />
+        <span class="font-medium">Keluar</span>
       </button>
-    </div>
-
-    <!-- User Footer Profile Segment -->
-    <div
-      class="p-4 border-t border-slate-800 bg-slate-900/50 cursor-pointer hover:bg-slate-800/80 transition-colors"
-      @click="openProfileModal"
-    >
-      <div
-        v-if="authStore.isFetching && !authStore.user"
-        class="flex items-center animate-pulse"
-      >
-        <div class="w-9 h-9 rounded-full bg-slate-800"></div>
-        <div class="ml-3 space-y-2 flex-1">
-          <div class="h-3 bg-slate-800 rounded w-3/4"></div>
-          <div class="h-2 bg-slate-800 rounded w-1/2"></div>
-        </div>
-      </div>
-
-      <div v-else-if="authStore.user" class="flex items-center">
-        <div
-          class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold shadow-lg shrink-0 text-sm"
-        >
-          {{ authStore.user.fullname?.charAt(0).toUpperCase() }}
-        </div>
-        <div class="ml-3 overflow-hidden flex-1">
-          <p class="text-sm font-medium text-slate-200 truncate">
-            {{ authStore.user.fullname }}
-          </p>
-          <p class="text-xs text-slate-500 truncate">
-            {{ authStore.user.major || "Data profil belum lengkap" }}
-          </p>
-        </div>
-      </div>
     </div>
 
     <!-- Profile Update Modal -->
@@ -336,6 +380,22 @@ const submitProfileUpdate = async () => {
               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
             />
           </div>
+        </div>
+
+        <!-- Monthly Allowance -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-semibold text-slate-700"
+            >Uang Bulanan (Rp)</label
+          >
+          <input
+            v-model.number="profileForm.monthlyAllowance"
+            type="number"
+            placeholder="Cth: 1500000"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
+          />
+          <p class="text-xs text-slate-400">
+            Digunakan sebagai batas anggaran di Dashboard.
+          </p>
         </div>
 
         <!-- Residence Type -->

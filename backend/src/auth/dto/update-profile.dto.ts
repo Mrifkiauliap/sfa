@@ -35,4 +35,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   residenceType?: string;
+
+  @ApiPropertyOptional({ example: 1500000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  monthlyAllowance?: number;
 }

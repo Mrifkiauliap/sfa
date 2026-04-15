@@ -16,6 +16,44 @@
       </Button>
     </div>
 
+    <!-- Search Bar (Semantic Web) -->
+    <div class="relative">
+      <div
+        class="absolute inset-y-0 left-4 flex items-center pointer-events-none"
+      >
+        <Search class="w-4 h-4 text-slate-400" />
+      </div>
+      <input
+        v-model="searchQuery"
+        @input="onSearchInput"
+        type="text"
+        placeholder="Cari via Semantic Web... (nama merchant, kategori, keterangan)"
+        class="w-full pl-11 pr-36 py-3 rounded-xl border border-slate-200 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+      />
+      <div class="absolute inset-y-0 right-3 flex items-center gap-2">
+        <span
+          v-if="searchQuery && meta.searchSource"
+          class="text-[10px] font-bold px-2 py-1 rounded-full"
+          :class="
+            meta.searchSource?.includes('SPARQL')
+              ? 'bg-indigo-100 text-indigo-700'
+              : 'bg-orange-100 text-orange-700'
+          "
+        >
+          {{
+            meta.searchSource?.includes("SPARQL") ? "🔗 SPARQL" : "🔄 Fallback"
+          }}
+        </span>
+        <button
+          v-if="searchQuery"
+          @click="clearSearch"
+          class="text-slate-400 hover:text-slate-600 transition-colors p-1"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+
     <!-- Table Container -->
     <div
       class="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col"
@@ -35,63 +73,81 @@
         >
           <Receipt class="w-10 h-10 text-slate-300" />
         </div>
-        <h3 class="text-lg font-bold text-slate-800">Belum ada Transaksi</h3>
+        <h3 class="text-lg font-bold text-slate-800">
+          {{ searchQuery ? "Tidak ditemukan hasil" : "Belum ada Transaksi" }}
+        </h3>
         <p class="text-slate-500 max-w-sm mt-2 text-sm leading-relaxed">
-          Mulai catat pengeluaranmu hari ini biar keuangan gampang dilacak.
+          {{
+            searchQuery
+              ? `Tidak ada transaksi yang cocok dengan "${searchQuery}".`
+              : "Mulai catat pengeluaranmu hari ini biar keuangan gampang dilacak."
+          }}
         </p>
       </div>
 
-      <!-- Tanstack UI Data Grid -->
+      <!-- Table -->
       <div v-else class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
               class="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm"
             >
-              <th
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="py-3 px-6 font-semibold whitespace-nowrap"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </th>
+              <th class="py-3 px-6 font-semibold">Waktu / Tanggal</th>
+              <th class="py-3 px-6 font-semibold">Merchant / Tempat</th>
+              <th class="py-3 px-6 font-semibold">Kategori</th>
+              <th class="py-3 px-6 font-semibold">Metode Bayar</th>
+              <th class="py-3 px-6 font-semibold">Keterangan</th>
+              <th class="py-3 px-6 font-semibold">Nominal</th>
+              <th class="py-3 px-6 font-semibold">Aksi</th>
             </tr>
           </thead>
           <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
             <tr
-              v-for="row in table.getRowModel().rows"
-              :key="row.id"
+              v-for="trx in transactions"
+              :key="trx.id"
               class="hover:bg-slate-50/70 transition-colors"
             >
-              <td
-                v-for="cell in row.getVisibleCells()"
-                :key="cell.id"
-                class="py-4 px-6"
-              >
-                <!-- Render normal cells -->
-                <FlexRender
-                  v-if="cell.column.id !== 'actions'"
-                  :render="cell.column.columnDef.cell"
-                  :props="cell.getContext()"
-                />
-
-                <!-- Custom Render for Actions -->
-                <div v-else class="flex items-center gap-2">
+              <td class="py-4 px-6 whitespace-nowrap">
+                {{ formatDate(trx.date) }}
+              </td>
+              <td class="py-4 px-6">
+                <span class="font-semibold text-slate-800">{{
+                  trx.merchant?.name || "-"
+                }}</span>
+              </td>
+              <td class="py-4 px-6">
+                <span
+                  class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200"
+                >
+                  {{ trx.category?.name || "-" }}
+                </span>
+              </td>
+              <td class="py-4 px-6">{{ trx.paymentMethod?.name || "-" }}</td>
+              <td class="py-4 px-6">
+                <span
+                  v-if="trx.description"
+                  class="text-xs text-slate-500 italic max-w-[150px] truncate block"
+                  :title="trx.description"
+                  >{{ trx.description }}</span
+                >
+                <span v-else>-</span>
+              </td>
+              <td class="py-4 px-6">
+                <span class="font-bold text-rose-600">{{
+                  formatRp(trx.amount)
+                }}</span>
+              </td>
+              <td class="py-4 px-6">
+                <div class="flex items-center gap-2">
                   <button
-                    @click="openEditModal(row.original)"
+                    @click="openEditModal(trx)"
                     class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
                     title="Edit"
                   >
                     <Edit2 class="w-4 h-4" />
                   </button>
                   <button
-                    @click="handleDelete(row.original.id)"
+                    @click="handleDelete(trx.id)"
                     class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
                     title="Hapus"
                   >
@@ -108,29 +164,46 @@
           class="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-white"
         >
           <div class="text-sm text-slate-500">
-            Halaman
+            Menampilkan
             <span class="font-medium text-slate-800">{{
-              table.getState().pagination.pageIndex + 1
+              transactions.length
             }}</span>
             dari
+            <span class="font-medium text-slate-800">{{ meta.total }}</span>
+            data · Halaman
+            <span class="font-medium text-slate-800">{{ meta.page }}</span>
+            /
             <span class="font-medium text-slate-800">{{
-              table.getPageCount()
+              meta.totalPages
             }}</span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <button
-              class="px-3 py-1.5 text-sm font-medium border border-slate-200 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700"
-              @click="table.previousPage()"
-              :disabled="!table.getCanPreviousPage()"
+              class="px-3 py-1.5 text-sm font-medium border border-slate-200 rounded-md bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
+              @click="goToPage(meta.page - 1)"
+              :disabled="meta.page <= 1"
             >
-              Sebelumnya
+              ← Sebelumnya
             </button>
+            <template v-for="p in visiblePages" :key="p">
+              <button
+                @click="goToPage(p)"
+                class="w-9 h-9 text-sm font-medium rounded-md border transition-colors"
+                :class="
+                  p === meta.page
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                "
+              >
+                {{ p }}
+              </button>
+            </template>
             <button
-              class="px-3 py-1.5 text-sm font-medium border border-slate-200 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700"
-              @click="table.nextPage()"
-              :disabled="!table.getCanNextPage()"
+              class="px-3 py-1.5 text-sm font-medium border border-slate-200 rounded-md bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
+              @click="goToPage(meta.page + 1)"
+              :disabled="meta.page >= meta.totalPages"
             >
-              Selanjutnya
+              Selanjutnya →
             </button>
           </div>
         </div>
@@ -271,22 +344,13 @@
 </template>
 
 <script setup lang="ts">
-import { Edit2, Plus, Receipt, Trash2 } from "lucide-vue-next";
-import { h, onMounted, ref } from "vue";
+import { Edit2, Plus, Receipt, Search, Trash2, X } from "lucide-vue-next";
+import { computed, onMounted, ref } from "vue";
 import XFormModal from "~/components/XFormModal.vue";
 import XInputError from "~/components/XInputError.vue";
 import { useApi } from "~/services/api";
 import { useAuthStore } from "~/stores/auth";
 import { useNotification } from "~/utils/notify";
-
-// Tanstack Vue Table
-import {
-  FlexRender,
-  createColumnHelper,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useVueTable,
-} from "@tanstack/vue-table";
 
 definePageMeta({ middleware: "auth" });
 
@@ -296,6 +360,16 @@ const { showSuccess, showError } = useNotification();
 
 const transactions = ref<any[]>([]);
 const isLoading = ref(true);
+const searchQuery = ref("");
+const searchTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+
+const meta = ref({
+  total: 0,
+  page: 1,
+  limit: 10,
+  totalPages: 1,
+  searchSource: "" as string | undefined,
+});
 
 // Master Data List
 const masterData = ref({
@@ -315,11 +389,27 @@ const form = ref({
   merchantId: "",
   paymentMethodId: "",
   amount: "" as number | "",
-  date: "", // ISO String YYYY-MM-DDTHH:mm
+  date: "",
   description: "",
 });
 
 const errors = ref<Record<string, string>>({});
+
+// Computed: visible page buttons (max 5)
+const visiblePages = computed(() => {
+  const total = meta.value.totalPages;
+  const current = meta.value.page;
+  const delta = 2;
+  const pages: number[] = [];
+  for (
+    let i = Math.max(1, current - delta);
+    i <= Math.min(total, current + delta);
+    i++
+  ) {
+    pages.push(i);
+  }
+  return pages;
+});
 
 // Function Utils
 const formatRp = (angka: number) => {
@@ -345,7 +435,6 @@ const formatDate = (isoString: string) => {
 const formatToInputDate = (isoString: string) => {
   if (!isoString) return "";
   const d = new Date(isoString);
-  // YYYY-MM-DDTHH:mm
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
@@ -367,14 +456,18 @@ const fetchMasterData = async () => {
   }
 };
 
-const fetchTransactions = async () => {
+const fetchTransactions = async (page = 1) => {
   if (!authStore.user) return;
   isLoading.value = true;
   try {
-    const res = await api(`/transaction?userId=${authStore.user.id}`, {
-      method: "GET",
-    });
-    transactions.value = res.data || [];
+    const res = await api(
+      `/transaction?userId=${authStore.user.id}&page=${page}&limit=${meta.value.limit}`,
+      { method: "GET" },
+    );
+    transactions.value = res.data?.data || res.data || [];
+    if (res.meta) {
+      meta.value = { ...meta.value, ...res.meta, searchSource: "" };
+    }
   } catch (err: any) {
     if (err.response?.status !== 401) {
       showError("Gagal memuat data transaksi.");
@@ -384,90 +477,58 @@ const fetchTransactions = async () => {
   }
 };
 
+const searchTransactions = async (page = 1) => {
+  if (!authStore.user || !searchQuery.value.trim()) {
+    return fetchTransactions(1);
+  }
+  isLoading.value = true;
+  try {
+    const q = encodeURIComponent(searchQuery.value.trim());
+    const res = await api(
+      `/transaction/search?userId=${authStore.user.id}&q=${q}&page=${page}&limit=${meta.value.limit}`,
+      { method: "GET" },
+    );
+    transactions.value = res.data || [];
+    if (res.meta) {
+      meta.value = { ...meta.value, ...res.meta };
+    }
+  } catch (err: any) {
+    showError("Gagal melakukan pencarian.");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Debounced search input
+const onSearchInput = () => {
+  if (searchTimer.value) clearTimeout(searchTimer.value);
+  searchTimer.value = setTimeout(() => {
+    meta.value.page = 1;
+    searchTransactions(1);
+  }, 400);
+};
+
+const clearSearch = () => {
+  searchQuery.value = "";
+  fetchTransactions(1);
+};
+
+const goToPage = (page: number) => {
+  meta.value.page = page;
+  if (searchQuery.value.trim()) {
+    searchTransactions(page);
+  } else {
+    fetchTransactions(page);
+  }
+};
+
 onMounted(async () => {
-  await fetchMasterData(); // Background load Options
+  await fetchMasterData();
   if (authStore.user) {
     fetchTransactions();
   } else {
-    // wait for auth ready
     setTimeout(() => fetchTransactions(), 1000);
   }
-});
-
-// Tanstack Columns setup
-const columnHelper = createColumnHelper<any>();
-const columns = [
-  columnHelper.accessor("date", {
-    header: "Waktu / Tanggal",
-    cell: (info) => formatDate(info.getValue()),
-  }),
-  columnHelper.accessor("merchant.name", {
-    header: "Merchant / Tempat",
-    cell: (info) =>
-      h(
-        "span",
-        { class: "font-semibold text-slate-800" },
-        info.getValue() || "-",
-      ),
-  }),
-  columnHelper.accessor("category.name", {
-    header: "Kategori",
-    cell: (info) =>
-      h(
-        "span",
-        {
-          class:
-            "px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200",
-        },
-        info.getValue() || "-",
-      ),
-  }),
-  columnHelper.accessor("paymentMethod.name", {
-    header: "Metode Bayar",
-    cell: (info) => info.getValue() || "-",
-  }),
-  columnHelper.accessor("description", {
-    header: "Keterangan",
-    cell: (info) =>
-      info.getValue()
-        ? h(
-            "span",
-            {
-              class:
-                "text-xs text-slate-500 italic max-w-[150px] truncate block",
-              title: info.getValue(),
-            },
-            info.getValue(),
-          )
-        : "-",
-  }),
-  columnHelper.accessor("amount", {
-    header: "Nominal",
-    cell: (info) =>
-      h(
-        "span",
-        { class: "font-bold text-rose-600" },
-        formatRp(info.getValue()),
-      ),
-  }),
-  columnHelper.display({
-    id: "actions",
-    header: "Aksi",
-  }),
-];
-
-const table = useVueTable({
-  get data() {
-    return transactions.value;
-  },
-  columns: columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  initialState: {
-    pagination: {
-      pageSize: 8, // Set 8 baris per halaman supaya tabel tidak meler kebawah
-    },
-  },
 });
 
 // Modals Setup
@@ -552,7 +613,7 @@ const handleSubmit = async () => {
     }
 
     isModalOpen.value = false;
-    fetchTransactions();
+    fetchTransactions(meta.value.page);
   } catch (err: any) {
     if (err.response?.status === 400 && err.response?._data?.message) {
       const msg = err.response._data.message;
@@ -574,10 +635,10 @@ const handleDelete = async (id: string) => {
     try {
       await api(`/transaction/${id}`, {
         method: "DELETE",
-        parseResponse: (txt) => txt, // Sama kasus seperti 204 master data
+        parseResponse: (txt) => txt,
       });
       showSuccess("Riwayat telah bersih dihapus");
-      fetchTransactions();
+      fetchTransactions(meta.value.page);
     } catch (err: any) {
       showError(
         err.response?._data?.message || err.message || "Gagal menghapus.",

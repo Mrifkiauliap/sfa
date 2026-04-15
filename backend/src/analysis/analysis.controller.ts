@@ -31,7 +31,6 @@ export class AnalysisController {
       body.minConfidence ? body.minConfidence / 100 : undefined,
       body.basketPeriod,
     );
-    // Wrap to prevent TransformInterceptor from stripping the outer object since it has a 'data' DB column
     return { data: result };
   }
 
@@ -40,5 +39,12 @@ export class AnalysisController {
     const userId = req.user.id;
     const result = await this.analysisService.getLatestAprioriResult(userId);
     return { data: result };
+  }
+
+  @Get('history')
+  async getHistory(@Request() req) {
+    const userId = req.user.id;
+    const results = await this.analysisService.getAnalysisHistory(userId);
+    return { data: results };
   }
 }

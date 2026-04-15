@@ -188,4 +188,16 @@ export class AnalysisService {
     }
     return result;
   }
+
+  /**
+   * Mengambil semua riwayat hasil analisis Apriori user
+   */
+  async getAnalysisHistory(userId: string) {
+    const results = await this.prisma.analysisResult.findMany({
+      where: { userId, resultType: 'APRIORI' },
+      orderBy: { createdAt: 'desc' },
+      take: 20, // Batasi 20 hasil terakhir
+    });
+    return results;
+  }
 }

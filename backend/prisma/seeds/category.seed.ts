@@ -5,26 +5,46 @@ export default async function categorySeed(prisma: PrismaClient) {
   const categories = [
     {
       name: 'Makan & Minum',
-      description: 'Pengeluaran kebutuhan konsumsi sehari-hari',
+      description: 'Pengeluaran makan, minum, jajan harian mahasiswa',
     },
-    { name: 'Transportasi', description: 'Biaya BBM, ongkos ojek/angkot' },
+    {
+      name: 'Transportasi',
+      description: 'Bensin, ojek online, angkot, parkir',
+    },
     {
       name: 'Pendidikan',
-      description: 'Beli buku, print tugas, fotokopi, UKT',
+      description: 'Print tugas, fotokopi, beli buku, alat tulis, bayar UKT',
     },
     {
-      name: 'Kos/Tempat Tinggal',
-      description: 'Pembayaran sewa tempat tinggal atau listrik',
+      name: 'Kos & Utilitas',
+      description: 'Bayar sewa kos, listrik, air, Wi-Fi bulanan',
     },
-    { name: 'Hiburan', description: 'Nonton, langganan film/musik, nongkrong' },
-    { name: 'Kesehatan', description: 'Obat, vitamin, biaya periksa' },
-    { name: 'Lainnya', description: 'Pengeluaran tak terduga' },
+    {
+      name: 'Hiburan & Sosial',
+      description: 'Nonton bioskop, nongkrong, karaoke, event kampus',
+    },
+    {
+      name: 'Kesehatan',
+      description: 'Beli obat, vitamin, klinik, apotek',
+    },
+    {
+      name: 'Belanja & Kebutuhan',
+      description: 'Beli pakaian, perlengkapan mandi, deterjen, dll.',
+    },
+    {
+      name: 'Pulsa & Internet',
+      description: 'Top up pulsa, beli paket data internet',
+    },
+    {
+      name: 'Lainnya',
+      description: 'Pengeluaran tak terduga atau tidak masuk kategori lain',
+    },
   ];
 
   for (const cat of categories) {
     await prisma.category.upsert({
       where: { name: cat.name },
-      update: {},
+      update: { description: cat.description },
       create: cat,
     });
   }

@@ -292,4 +292,73 @@ export class RdfService {
       throw error;
     }
   }
+
+  /**
+   * Mencari ID transaksi milik user yang berelasi dengan
+   * kategori atau merchant yang cocok keyword — via SPARQL ke Fuseki.
+   * Ini adalah inti dari "Semantic Web Search."
+   *
+   * Cara kerjanya (Hybrid Approach):
+   * 1. Resolver: Temukan Category/Merchant IDs yang namanya cocok keyword (via param)
+   * 2. SPARQL Query: Tanya Fuseki — transaksi mana (milik user ini) yang punya
+   *    relasi sfa:hasCategory atau sfa:hasMerchant ke ID-ID tersebut?
+   * 3. Return: Daftar UUID transaksi yang cocok
+   */
+  async searchTransactionIdsBySPARQL(
+    userId: string,
+    categoryIds: string[],
+    merchantIds: string[],
+  ): Promise<string[]> {
+    try {
+      const queryEndpoint = `${this.fusekiUrl}/${this.fusekiDataset}/query`;
+      const userNode = `<${this.sfa}User_${userId}>`;
+
+      // Bangun UNION filter berdasarkan kategori dan/atau merchant IDs
+      const catFilters = categoryIds.map(
+        (id) => `{ ?trx <${this.sfa}hasCategory> <${this.sfa}Category_${id}> }`,
+      );
+      const merFilters = merchantIds.map(
+        (id) => `{ ?trx <${this.sfa}hasMerchant> <${this.sfa}Merchant_${id}> }`,
+      );
+      const allFilters = [...catFilters, ...merFilters];
+
+      if (allFilters.length === 0) return [];
+
+      const sparqlQuery = `
+        PREFIX sfa: <${this.sfa}>
+        SELECT DISTINCT ?trx WHERE {
+          ${userNode} sfa:hasExpense ?trx .
+          { ${allFilters.join(' UNION ')} }
+        }
+      `;
+
+      const response = await axios.post(
+        queryEndpoint,
+        `query=${encodeURIComponent(sparqlQuery)}`,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/sparql-results+json',
+          },
+          ...this.authConfig,
+        },
+      );
+
+      const bindings = response.data?.results?.bindings ?? [];
+
+      // Extract UUID dari URI format: sfa:Transaction_<uuid>
+      return bindings
+        .map((b: any) => {
+          const uri: string = b.trx?.value ?? '';
+          return uri.split('Transaction_')[1] ?? null;
+        })
+        .filter(Boolean);
+    } catch (error) {
+      this.logger.error(
+        '❌ [FAILED] SPARQL Search gagal, fallback ke Prisma',
+        error?.response?.data || error?.message,
+      );
+      return []; // Kembalikan kosong agar service bisa fallback ke Prisma
+    }
+  }
 }
