@@ -54,9 +54,39 @@
       </div>
     </div>
 
+    <!-- Insight Banner -->
+    <div
+      v-if="searchQuery && meta.suggestion"
+      class="mt-4 mb-2 p-4 rounded-xl bg-indigo-50 border border-indigo-100 flex items-start gap-3 animate-in fade-in"
+    >
+      <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg shrink-0 mt-0.5">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+      </div>
+      <div>
+        <h4 class="text-sm font-bold text-indigo-900">Insight AI</h4>
+        <p class="text-sm text-indigo-800 mt-1 leading-relaxed">
+          {{ meta.suggestion }}
+        </p>
+      </div>
+    </div>
+
     <!-- Table Container -->
     <div
-      class="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col"
+      class="border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col mt-4"
     >
       <div v-if="isLoading" class="p-16 flex justify-center">
         <span
@@ -105,7 +135,8 @@
             <tr
               v-for="trx in transactions"
               :key="trx.id"
-              class="hover:bg-slate-50/70 transition-colors"
+              class="hover:bg-slate-50/70 transition-colors cursor-pointer"
+              @click="openDetailModal(trx)"
             >
               <td class="py-4 px-6 whitespace-nowrap">
                 {{ formatDate(trx.date) }}
@@ -140,14 +171,14 @@
               <td class="py-4 px-6">
                 <div class="flex items-center gap-2">
                   <button
-                    @click="openEditModal(trx)"
+                    @click.stop="openEditModal(trx)"
                     class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
                     title="Edit"
                   >
                     <Edit2 class="w-4 h-4" />
                   </button>
                   <button
-                    @click="handleDelete(trx.id)"
+                    @click.stop="handleDelete(trx.id)"
                     class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
                     title="Hapus"
                   >
@@ -340,6 +371,9 @@
         </div>
       </div>
     </XFormModal>
+
+    <!-- Detail Modal -->
+    <TransactionDetailModal ref="detailModal" />
   </div>
 </template>
 
@@ -369,6 +403,7 @@ const meta = ref({
   limit: 10,
   totalPages: 1,
   searchSource: "" as string | undefined,
+  suggestion: "" as string | undefined,
 });
 
 // Master Data List
@@ -394,6 +429,14 @@ const form = ref({
 });
 
 const errors = ref<Record<string, string>>({});
+
+const detailModal = ref<any>(null);
+
+const openDetailModal = (trx: any) => {
+  if (detailModal.value) {
+    detailModal.value.open(trx);
+  }
+};
 
 // Computed: visible page buttons (max 5)
 const visiblePages = computed(() => {

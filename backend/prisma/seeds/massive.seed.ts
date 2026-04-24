@@ -1,11 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { DataFactory, Writer } from 'n3';
 
 const { namedNode, literal } = DataFactory;
 
 export default async function massiveSeed(prisma: PrismaClient) {
-  console.log('--- Memulai Massive Transaction Seeding ---');
+  console.log('--- Memulai Massive Realistic Transaction Seeding ---');
 
   // Load Env Configuration
   const fusekiUrl = process.env.FUSEKI_URL || 'http://localhost:3030';
@@ -13,7 +14,6 @@ export default async function massiveSeed(prisma: PrismaClient) {
   const username = process.env.FUSEKI_USERNAME;
   const password = process.env.FUSEKI_PASSWORD;
   const updateEndpoint = `${fusekiUrl}/${fusekiDataset}/update`;
-  const transactionsToCreate = 100;
 
   const authHeader =
     username && password ? { auth: { username, password } } : {};
@@ -36,8 +36,9 @@ export default async function massiveSeed(prisma: PrismaClient) {
     console.log('Proceeding with DB seeding anyway...');
   }
 
-  // 2. Clear Existing Transactions
-  console.log('Cleaning existing transactions in DB...');
+  // 2. Clear Existing Transactions & Analysis
+  console.log('Cleaning existing transactions & analysis in DB...');
+  await prisma.analysisResult.deleteMany({});
   await prisma.transaction.deleteMany({});
 
   // 3. Ambil data master
@@ -64,327 +65,278 @@ export default async function massiveSeed(prisma: PrismaClient) {
     paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
   const randBetween = (min: number, max: number) =>
     Math.floor(Math.random() * (max - min + 1)) + min;
+  const chance = (prob: number) => Math.random() < prob;
+  const pickRandom = <T>(arr: T[]): T =>
+    arr[Math.floor(Math.random() * arr.length)];
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Peta Konteks Realistis: setiap template mendeskripsikan SATU JENIS transaksi
-  // yang secara nyata dilakukan mahasiswa. Merchant SELALU sesuai kategorinya.
-  // ─────────────────────────────────────────────────────────────────────────────
-  type TrxTemplate = {
-    category: string;
-    merchant: string;
-    minAmount: number;
-    maxAmount: number;
-    description: string;
-    paymentMethod?: string; // jika diisi, metode bayar akan dikunci
-    weight: number; // probabilitas relatif (lebih tinggi = lebih sering)
+  // Define Payload Types
+  type TrxDef = {
+    cat: string;
+    merch: string;
+    pay?: string;
+    amount: number;
+    desc: string;
+    hour: number;
   };
 
-  const templates: TrxTemplate[] = [
-    // ── Makan & Minum (paling dominan) ───────────────────────────────────────
-    {
-      category: 'Makan & Minum',
-      merchant: 'Kantin Fakultas',
-      minAmount: 8000,
-      maxAmount: 20000,
-      description: 'Makan siang di kantin kampus',
-      weight: 15,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Warteg Pak Udin',
-      minAmount: 8000,
-      maxAmount: 18000,
-      description: 'Nasi rames warteg dekat kos',
-      weight: 14,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Gacoan',
-      minAmount: 15000,
-      maxAmount: 35000,
-      description: 'Makan mie pedas level favorit',
-      weight: 10,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Geprek Bensu',
-      minAmount: 15000,
-      maxAmount: 30000,
-      description: 'Ayam geprek krispy kala lapar malam',
-      weight: 9,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Mie Ayam Pak Slamet',
-      minAmount: 10000,
-      maxAmount: 20000,
-      description: 'Mie ayam bakso dekat kos',
-      weight: 8,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Kopi Kenangan',
-      minAmount: 18000,
-      maxAmount: 40000,
-      description: 'Kopi kekinian sambil nugas',
-      weight: 10,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Bakso Malang Bakar',
-      minAmount: 10000,
-      maxAmount: 25000,
-      description: 'Jajan sore bakso bakar area kampus',
-      weight: 7,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'McDonalds',
-      minAmount: 30000,
-      maxAmount: 75000,
-      description: 'Treat diri sendiri atau makan bareng',
-      weight: 4,
-    },
-    {
-      category: 'Makan & Minum',
-      merchant: 'Indomaret',
-      minAmount: 5000,
-      maxAmount: 30000,
-      description: 'Beli cemilan dan minuman di minimarket',
-      weight: 8,
-    },
+  const generatedTransactions: {
+    userId: string;
+    categoryId: string;
+    merchantId: string;
+    paymentMethodId: string;
+    amount: number;
+    date: Date;
+    description: string;
+  }[] = [];
 
-    // ── Pendidikan ────────────────────────────────────────────────────────────
-    {
-      category: 'Pendidikan',
-      merchant: 'Fotokopi Sumber Ilmu',
-      minAmount: 3000,
-      maxAmount: 20000,
-      description: 'Print & fotokopi tugas kuliah',
-      weight: 12,
-    },
-    {
-      category: 'Pendidikan',
-      merchant: 'Print Center Kampus',
-      minAmount: 2000,
-      maxAmount: 15000,
-      description: 'Ngeprint laporan/skripsi di lab',
-      weight: 10,
-    },
-    {
-      category: 'Pendidikan',
-      merchant: 'Gramedia',
-      minAmount: 25000,
-      maxAmount: 150000,
-      description: 'Beli buku referensi atau alat tulis',
-      weight: 5,
-    },
-    {
-      category: 'Pendidikan',
-      merchant: 'Fotokopi Sumber Ilmu',
-      minAmount: 5000,
-      maxAmount: 30000,
-      description: 'Jilid laporan praktikum',
-      weight: 6,
-    },
+  const daysToSimulate = 60;
 
-    // ── Transportasi ──────────────────────────────────────────────────────────
-    {
-      category: 'Transportasi',
-      merchant: 'SPBU Shell',
-      minAmount: 20000,
-      maxAmount: 80000,
-      description: 'Isi bensin motor',
-      weight: 8,
-    },
-    {
-      category: 'Transportasi',
-      merchant: 'Gojek',
-      minAmount: 8000,
-      maxAmount: 35000,
-      description: 'GoRide ke kampus atau kondangan',
-      weight: 7,
-    },
-    {
-      category: 'Transportasi',
-      merchant: 'Grab',
-      minAmount: 10000,
-      maxAmount: 40000,
-      description: 'GrabBike pulang malam dari kampus',
-      weight: 6,
-    },
+  for (const user of users) {
+    console.log(`Generating daily life for user: ${user.username}...`);
+    let startDate = dayjs().subtract(daysToSimulate, 'day');
 
-    // ── Kos & Utilitas ────────────────────────────────────────────────────────
-    {
-      category: 'Kos & Utilitas',
-      merchant: 'Bu Ratna Kos',
-      minAmount: 400000,
-      maxAmount: 800000,
-      description: 'Bayar sewa kos bulan ini',
-      paymentMethod: 'Transfer Bank',
-      weight: 3,
-    },
-    {
-      category: 'Kos & Utilitas',
-      merchant: 'PLN Mobile',
-      minAmount: 50000,
-      maxAmount: 150000,
-      description: 'Beli token listrik kamar kos',
-      paymentMethod: 'GoPay',
-      weight: 4,
-    },
+    for (let day = 0; day <= daysToSimulate; day++) {
+      const currentDay = startDate.add(day, 'day');
+      const isWeekend = currentDay.day() === 0 || currentDay.day() === 6;
+      const dateNum = currentDay.date();
 
-    // ── Belanja & Kebutuhan ───────────────────────────────────────────────────
-    {
-      category: 'Belanja & Kebutuhan',
-      merchant: 'Alfamart',
-      minAmount: 15000,
-      maxAmount: 80000,
-      description: 'Belanja sabun, sampo, kebutuhan mandi',
-      weight: 6,
-    },
-    {
-      category: 'Belanja & Kebutuhan',
-      merchant: 'Indomaret',
-      minAmount: 10000,
-      maxAmount: 60000,
-      description: 'Beli deterjen dan perlengkapan kos',
-      weight: 5,
-    },
-    {
-      category: 'Belanja & Kebutuhan',
-      merchant: 'Shopee',
-      minAmount: 30000,
-      maxAmount: 250000,
-      description: 'Order pakaian/barang dari Shopee',
-      paymentMethod: 'ShopeePay',
-      weight: 4,
-    },
+      const dayTrxs: TrxDef[] = [];
 
-    // ── Hiburan & Sosial ──────────────────────────────────────────────────────
-    {
-      category: 'Hiburan & Sosial',
-      merchant: 'Kafe Anak Senja',
-      minAmount: 25000,
-      maxAmount: 80000,
-      description: 'Nongkrong dan kerja tugas di kafe',
-      weight: 6,
-    },
-    {
-      category: 'Hiburan & Sosial',
-      merchant: 'Cinema XXI',
-      minAmount: 30000,
-      maxAmount: 80000,
-      description: 'Nonton film terbaru bareng teman',
-      weight: 3,
-    },
-    {
-      category: 'Hiburan & Sosial',
-      merchant: 'Timezone',
-      minAmount: 50000,
-      maxAmount: 150000,
-      description: 'Main games di Timezone saat weekend',
-      weight: 2,
-    },
+      // ---------------------------------------------------------
+      // BUNDLE 1: Monthly Bills (Bayar Kos & Utilitas)
+      // Terjadi di awal bulan (tgl 1-3) atau akhir bulan (tgl 25-28)
+      // ---------------------------------------------------------
+      if ((dateNum >= 1 && dateNum <= 3) || (dateNum >= 25 && dateNum <= 28)) {
+        if (chance(0.2)) {
+          // 20% chance to pay bills on these days
+          dayTrxs.push({
+            cat: 'Kos & Utilitas',
+            merch: 'Bu Ratna Kos',
+            pay: 'Transfer Bank',
+            amount: 500000,
+            desc: 'Bayar sewa kos bulan ini',
+            hour: 9,
+          });
+          dayTrxs.push({
+            cat: 'Kos & Utilitas',
+            merch: 'PLN Mobile',
+            pay: 'GoPay',
+            amount: 100000,
+            desc: 'Isi token listrik bulanan',
+            hour: 10,
+          });
+          dayTrxs.push({
+            cat: 'Belanja & Kebutuhan',
+            merch: 'Alfamart',
+            pay: 'Tunai',
+            amount: 80000,
+            desc: 'Belanja bulanan sabun, sampo, dsb',
+            hour: 16,
+          });
+          dayTrxs.push({
+            cat: 'Pulsa & Internet',
+            merch: 'Konter Pulsa Jaya',
+            pay: 'Tunai',
+            amount: 50000,
+            desc: 'Beli paket data',
+            hour: 17,
+          });
+        }
+      }
 
-    // ── Kesehatan ─────────────────────────────────────────────────────────────
-    {
-      category: 'Kesehatan',
-      merchant: 'Apotek K-24',
-      minAmount: 10000,
-      maxAmount: 60000,
-      description: 'Beli obat flu/vitamin setelah begadang',
-      weight: 4,
-    },
-    {
-      category: 'Kesehatan',
-      merchant: 'Klinik Sehat Kampus',
-      minAmount: 20000,
-      maxAmount: 80000,
-      description: 'Periksa ke klinik kampus',
-      weight: 2,
-    },
+      // ---------------------------------------------------------
+      // BUNDLE 2: Weekend Hangout (Sangat Kuat untuk Apriori)
+      // Kalau weekend, ada 60% peluang keluar main.
+      // Jika main ke Cinema XXI, kemungkinan besar makan McDonalds.
+      // ---------------------------------------------------------
+      if (isWeekend) {
+        if (chance(0.6)) {
+          // Siang/Sore: Nonton
+          dayTrxs.push({
+            cat: 'Hiburan & Sosial',
+            merch: 'Cinema XXI',
+            pay: 'GoPay',
+            amount: randBetween(35000, 50000),
+            desc: 'Nonton film bareng teman',
+            hour: pickRandom([14, 15, 16]),
+          });
 
-    // ── Pulsa & Internet ──────────────────────────────────────────────────────
-    {
-      category: 'Pulsa & Internet',
-      merchant: 'Konter Pulsa Jaya',
-      minAmount: 10000,
-      maxAmount: 100000,
-      description: 'Beli paket data internet bulanan',
-      paymentMethod: 'Tunai',
-      weight: 7,
-    },
-    {
-      category: 'Pulsa & Internet',
-      merchant: 'Gojek',
-      minAmount: 10000,
-      maxAmount: 50000,
-      description: 'Top up kuota lewat aplikasi Gojek',
-      paymentMethod: 'GoPay',
-      weight: 5,
-    },
-  ];
+          // Malam: Makan (Korelasi Kuat dengan Cinema XXI)
+          dayTrxs.push({
+            cat: 'Makan & Minum',
+            merch: 'McDonalds',
+            pay: 'Debit BCA',
+            amount: randBetween(40000, 75000),
+            desc: 'Makan malam habis nonton',
+            hour: pickRandom([18, 19, 20]),
+          });
 
-  // Bangun weighted list untuk weighted random pick
-  const weightedList: TrxTemplate[] = [];
-  for (const t of templates) {
-    for (let w = 0; w < t.weight; w++) weightedList.push(t);
+          // Transport
+          if (chance(0.5)) {
+            dayTrxs.push({
+              cat: 'Transportasi',
+              merch: 'Grab',
+              pay: 'GoPay',
+              amount: randBetween(15000, 30000),
+              desc: 'GrabCar patungan pulang',
+              hour: 21,
+            });
+          }
+        } else {
+          // Weekend santai di kos
+          dayTrxs.push({
+            cat: 'Makan & Minum',
+            merch: 'Geprek Bensu',
+            pay: 'GoPay',
+            amount: randBetween(15000, 25000),
+            desc: 'Delivery gofood malam',
+            hour: 19,
+          });
+          dayTrxs.push({
+            cat: 'Makan & Minum',
+            merch: 'Kopi Kenangan',
+            pay: 'GoPay',
+            amount: randBetween(18000, 25000),
+            desc: 'Kopi nemenin nugas weekend',
+            hour: 15,
+          });
+        }
+      }
+      // ---------------------------------------------------------
+      // BUNDLE 3: Weekday Routine
+      // ---------------------------------------------------------
+      else {
+        // Makan Siang
+        const lunchMerch = pickRandom([
+          'Kantin Fakultas',
+          'Warteg Pak Udin',
+          'Mie Ayam Pak Slamet',
+        ]);
+        dayTrxs.push({
+          cat: 'Makan & Minum',
+          merch: lunchMerch,
+          pay: 'Tunai',
+          amount: randBetween(10000, 20000),
+          desc: `Makan siang di ${lunchMerch}`,
+          hour: pickRandom([12, 13]),
+        });
+
+        // Makan Malam
+        if (chance(0.8)) {
+          const dinnerMerch = pickRandom([
+            'Gacoan',
+            'Geprek Bensu',
+            'Warteg Pak Udin',
+          ]);
+          dayTrxs.push({
+            cat: 'Makan & Minum',
+            merch: dinnerMerch,
+            pay: dinnerMerch === 'Warteg Pak Udin' ? 'Tunai' : 'GoPay',
+            amount: randBetween(15000, 30000),
+            desc: 'Makan malam',
+            hour: pickRandom([18, 19, 20]),
+          });
+        }
+
+        // Bensin (10% chance tiap hari biasa)
+        if (chance(0.1)) {
+          dayTrxs.push({
+            cat: 'Transportasi',
+            merch: 'SPBU Shell',
+            pay: 'Tunai',
+            amount: 30000,
+            desc: 'Isi bensin motor',
+            hour: pickRandom([7, 8, 16]),
+          });
+        }
+
+        // Kebutuhan Kuliah (15% chance)
+        if (chance(0.15)) {
+          dayTrxs.push({
+            cat: 'Pendidikan',
+            merch: 'Fotokopi Sumber Ilmu',
+            pay: 'Tunai',
+            amount: randBetween(3000, 15000),
+            desc: 'Print dan jilid tugas',
+            hour: pickRandom([10, 14]),
+          });
+        }
+
+        // Nongkrong Kafe (20% chance)
+        if (chance(0.2)) {
+          dayTrxs.push({
+            cat: 'Hiburan & Sosial',
+            merch: 'Kafe Anak Senja',
+            pay: 'Debit BCA',
+            amount: randBetween(30000, 50000),
+            desc: 'Nugas sambil ngopi',
+            hour: pickRandom([16, 17, 19]),
+          });
+        }
+      }
+
+      // ---------------------------------------------------------
+      // RESOLVE AND PUSH
+      // ---------------------------------------------------------
+      for (const t of dayTrxs) {
+        const catNode = findCat(t.cat);
+        const merchNode = findMerch(t.merch);
+        const payNode = t.pay ? findPay(t.pay) : randPay();
+
+        if (catNode && merchNode && payNode) {
+          // Randomize minute
+          const trxDate = currentDay
+            .hour(t.hour)
+            .minute(randBetween(0, 59))
+            .second(0)
+            .toDate();
+
+          generatedTransactions.push({
+            userId: user.id,
+            categoryId: catNode.id,
+            merchantId: merchNode.id,
+            paymentMethodId: payNode.id,
+            amount: t.amount,
+            description: t.desc,
+            date: trxDate,
+          });
+        }
+      }
+    }
   }
 
-  const sfa = 'http://student-finance-analyzer.com/ontology#';
-
   console.log(
-    `Generating ${transactionsToCreate} contextual transactions & Syncing to Fuseki...`,
+    `Menyimpan ${generatedTransactions.length} transaksi ke PostgreSQL...`,
   );
 
-  for (let i = 0; i < transactionsToCreate; i++) {
-    const randomUser = users[Math.floor(Math.random() * users.length)];
+  // Karena kita butuh ID transaksi untuk Fuseki, kita harus pakai createManyAndReturn (Prisma >5.x)
+  // Atau iterasi satu-satu dalam transaction.
+  const createdTransactions: any[] = [];
 
-    // Pilih template secara weighted random
-    const template =
-      weightedList[Math.floor(Math.random() * weightedList.length)];
-
-    const cat = findCat(template.category);
-    const merch = findMerch(template.merchant);
-    const pay = template.paymentMethod
-      ? (findPay(template.paymentMethod) ?? randPay())
-      : randPay();
-
-    if (!cat || !merch || !pay) {
-      console.warn(
-        `⚠ Skipping: master data tidak ditemukan [${template.category} / ${template.merchant}]`,
-      );
-      continue;
-    }
-
-    const amount = randBetween(template.minAmount, template.maxAmount);
-
-    // Tanggal acak dalam 60 hari terakhir, jam antara 06:00–23:00
-    const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 60));
-    date.setHours(
-      Math.floor(Math.random() * 17) + 6,
-      Math.floor(Math.random() * 60),
+  // Kita insert per chunk agar tidak memberatkan memori
+  const chunkSize = 50;
+  for (let i = 0; i < generatedTransactions.length; i += chunkSize) {
+    const chunk = generatedTransactions.slice(i, i + chunkSize);
+    const results = await prisma.$transaction(
+      chunk.map((data) => prisma.transaction.create({ data })),
     );
+    createdTransactions.push(...results);
+  }
 
-    // CREATE IN DB
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId: randomUser.id,
-        categoryId: cat.id,
-        merchantId: merch.id,
-        paymentMethodId: pay.id,
-        amount,
-        date,
-        description: template.description,
-      },
-    });
+  console.log(
+    `Berhasil menyimpan ${createdTransactions.length} transaksi ke DB.`,
+  );
 
-    // SYNC TO FUSEKI (RDF Generation)
-    const writer = new Writer({ format: 'N-Triples' });
-    const trxNode = namedNode(`${sfa}Transaction_${transaction.id}`);
-    const userNode = namedNode(`${sfa}User_${transaction.userId}`);
+  // ---------------------------------------------------------
+  // SYNC TO FUSEKI (RDF Generation in BATCH)
+  // ---------------------------------------------------------
+  console.log(`Generating N-Triples untuk Knowledge Graph...`);
+  const sfa = 'http://student-finance-analyzer.com/ontology#';
+  const writer = new Writer({ format: 'N-Triples' });
+
+  for (const trx of createdTransactions) {
+    const trxNode = namedNode(`${sfa}Transaction_${trx.id}`);
+    const userNode = namedNode(`${sfa}User_${trx.userId}`);
 
     writer.addQuad(userNode, namedNode(`${sfa}hasExpense`), trxNode);
     writer.addQuad(
@@ -392,59 +344,59 @@ export default async function massiveSeed(prisma: PrismaClient) {
       namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
       namedNode(`${sfa}Transaction`),
     );
-    writer.addQuad(trxNode, namedNode(`${sfa}amount`), literal(amount));
+    writer.addQuad(trxNode, namedNode(`${sfa}amount`), literal(trx.amount));
     writer.addQuad(
       trxNode,
       namedNode(`${sfa}date`),
       literal(
-        date.toISOString(),
+        trx.date.toISOString(),
         namedNode('http://www.w3.org/2001/XMLSchema#dateTime'),
       ),
     );
     writer.addQuad(
       trxNode,
       namedNode(`${sfa}hasCategory`),
-      namedNode(`${sfa}Category_${cat.id}`),
+      namedNode(`${sfa}Category_${trx.categoryId}`),
     );
     writer.addQuad(
       trxNode,
       namedNode(`${sfa}hasMerchant`),
-      namedNode(`${sfa}Merchant_${merch.id}`),
+      namedNode(`${sfa}Merchant_${trx.merchantId}`),
     );
     writer.addQuad(
       trxNode,
       namedNode(`${sfa}paidUsing`),
-      namedNode(`${sfa}PaymentMethod_${pay.id}`),
+      namedNode(`${sfa}PaymentMethod_${trx.paymentMethodId}`),
     );
-
-    await new Promise<void>((resolve) => {
-      writer.end(async (error, triplesString) => {
-        if (!error) {
-          const sparqlInsert = `INSERT DATA { ${triplesString} }`;
-          try {
-            await axios.post(
-              updateEndpoint,
-              `update=${encodeURIComponent(sparqlInsert)}`,
-              {
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                ...authHeader,
-              },
-            );
-          } catch (_) {
-            // Silently fail RDF sync jika Fuseki tidak aktif
-          }
-        }
-        resolve();
-      });
-    });
-
-    if ((i + 1) % 10 === 0)
-      console.log(
-        `  ✔ ${i + 1}/${transactionsToCreate} transaksi berhasil dibuat & disinkron...`,
-      );
   }
+
+  await new Promise<void>((resolve) => {
+    writer.end(async (error, triplesString) => {
+      if (!error && triplesString) {
+        console.log(`Mengirim massive SPARQL INSERT DATA ke Fuseki...`);
+        const sparqlInsert = `INSERT DATA {\n${triplesString}\n}`;
+        try {
+          await axios.post(
+            updateEndpoint,
+            `update=${encodeURIComponent(sparqlInsert)}`,
+            {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              ...authHeader,
+            },
+          );
+          console.log(`Berhasil sync Knowledge Graph.`);
+        } catch (e: any) {
+          console.error(
+            `Gagal sync Fuseki:`,
+            e.response?.statusText || e.message,
+          );
+        }
+      }
+      resolve();
+    });
+  });
 
   console.log('✅ Massive Seeding Selesai!');
 }

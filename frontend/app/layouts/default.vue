@@ -19,12 +19,9 @@ const pageTitle = computed(() => {
   <div
     class="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900"
   >
-    <!-- Komponen Sidebar yang di-import -->
     <AppSidebar />
 
-    <!-- Area Konten Utama -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-      <!-- Top Navbar Sederhana (Opsional, tapi bagus untuk UX) -->
       <header
         class="h-16 bg-white border-b border-slate-200 flex items-center px-8 shrink-0 shadow-sm z-10"
       >
@@ -38,7 +35,6 @@ const pageTitle = computed(() => {
         </div>
       </header>
 
-      <!-- Wadah dinamis untuk semua halaman-halaman (NuxtPage) -->
       <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50/50 p-8">
         <div class="mx-auto max-w-7xl">
           <slot />

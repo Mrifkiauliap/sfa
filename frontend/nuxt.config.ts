@@ -21,9 +21,16 @@ export default defineNuxtConfig({
       ],
     },
     plugins: [tailwindcss()],
+    server: {
+      allowedHosts: ["8564-182-9-161-228.ngrok-free.app"],
+    },
   },
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
+
+  build: {
+    transpile: ["@tanstack/vue-table"],
+  },
 
   devServer: {
     port: parseInt(process.env.PORT || "5173"),

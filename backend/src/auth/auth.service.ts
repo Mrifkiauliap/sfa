@@ -11,7 +11,6 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
-// ─── Tipe internal ────────────────────────────────────────────────────────────
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
@@ -28,7 +27,6 @@ const USER_SELECT = {
   createdAt: true,
 } as const;
 
-// ─── Service ──────────────────────────────────────────────────────────────────
 @Injectable()
 export class AuthService {
   constructor(
@@ -37,7 +35,6 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  // ── Register ────────────────────────────────────────────────────────────────
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
       where: { username: dto.username },
@@ -70,7 +67,6 @@ export class AuthService {
     };
   }
 
-  // ── Login ───────────────────────────────────────────────────────────────────
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { username: dto.username },
@@ -94,7 +90,6 @@ export class AuthService {
     };
   }
 
-  // ── Update Profile ──────────────────────────────────────────────────────────
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     if (dto.username) {
       const existing = await this.prisma.user.findFirst({
@@ -124,7 +119,6 @@ export class AuthService {
     };
   }
 
-  // ── Refresh Token ───────────────────────────────────────────────────────────
   async refreshToken(userId: string, username: string) {
     const tokens = await this.generateTokens(userId, username);
     return {
@@ -133,7 +127,6 @@ export class AuthService {
     };
   }
 
-  // ── Private: Generate Token Pair ────────────────────────────────────────────
   private async generateTokens(
     userId: string,
     username: string,

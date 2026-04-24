@@ -201,7 +201,10 @@
               class="w-full font-medium"
               :disabled="isLoading"
             >
-              <span v-if="isLoading" class="flex items-center justify-center gap-2">
+              <span
+                v-if="isLoading"
+                class="flex items-center justify-center gap-2"
+              >
                 <Spinner class="w-4 h-4 animate-spin" /> Mendaftar...
               </span>
               <span v-else>Daftar</span>

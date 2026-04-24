@@ -47,4 +47,11 @@ export class AnalysisController {
     const results = await this.analysisService.getAnalysisHistory(userId);
     return { data: results };
   }
+
+  @Get('apriori/graph-overlay')
+  async getAprioriGraphOverlay(@Request() req) {
+    const userId = req.user.id;
+    const result = await this.analysisService.getAprioriGraphOverlay(userId);
+    return { data: result };
+  }
 }

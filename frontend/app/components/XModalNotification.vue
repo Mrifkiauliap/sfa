@@ -1,6 +1,5 @@
 <template>
   <Teleport to="body">
-    <!-- Posisinya melayang di ujung Kanan Atas -->
     <div
       class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none"
     >
