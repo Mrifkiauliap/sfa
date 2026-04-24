@@ -6,18 +6,6 @@ Proyek ini adalah sistem analisis keuangan berbasis _Semantic Web_ dan _Data Min
 
 ---
 
-## Informasi Penting (Penyimpanan Source Code)
-
-**PENTING:** Repository ini tidak menyediakan folder _source code_ secara terbuka (unzipped) untuk keperluan efisiensi penyimpanan dan struktur folder tertentu.
-
-Untuk mendapatkan kode lengkap proyek ini:
-
-1. Jangan gunakan perintah `git clone`.
-2. Silakan **Download file .zip** yang tersedia di repository ini atau cek di bagian **Releases**.
-3. Ekstrak file ZIP tersebut di komputer lokal Anda untuk melihat folder `frontend` dan `backend`.
-
----
-
 ## Fitur Utama
 
 - **Financial Knowledge Graph:** Visualisasi data transaksi dalam bentuk graf menggunakan RDF (Resource Description Framework) dan Apache Fuseki.
